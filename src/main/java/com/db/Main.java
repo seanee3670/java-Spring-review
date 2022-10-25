@@ -1,8 +1,5 @@
 package com.db;
 
-import com.db.dao.MySqlConnectionMaker;
-import com.db.dao.UserDao05WithInterface;
-import com.db.dao.UserDaoFactory2;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.sql.SQLException;
