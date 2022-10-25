@@ -1,87 +1,51 @@
 package com.db.dao;
 
 import com.db.domain.User;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 
 public class UserDao {
-    private ConnectionMaker connectionMaker;
+    private JdbcTemplate jdbcTemplate;
 
-    public UserDao(ConnectionMaker connectionMaker) {
-        this.connectionMaker = connectionMaker;
+    public UserDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
-    private void jdbcContextWithStatementStrategy(StatementStrategy st) {
-        Connection c = null;
-        PreparedStatement pstmt = null;
-
-        try {
-            c = connectionMaker.makeConnection();
-            pstmt = st.makeStatement(c);
-
-            pstmt.executeUpdate();
-
-            pstmt.close();
-            c.close();
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } finally {
-            if (pstmt != null) {
-                try {
-                    pstmt.close();
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            if (c != null) {
-                try {
-                    c.close();
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
+    private RowMapper<User> userMapper() {
+        return (rs, rowNum) -> new User(rs.getString("id"), rs.getString("name"), rs.getString("password"));
     }
 
-    public void add(User user) {
-        jdbcContextWithStatementStrategy(new AddStrategy(user));
+    public void add(final User user) {
+        this.jdbcTemplate.update("INSERT INTO users(id, name, password) VALUES (?, ?, ?)", user.getId(), user.getName(), user.getPassword());
     }
 
     public void deleteAll() {
-        jdbcContextWithStatementStrategy(new DeleteAllStrategy());
+        this.jdbcTemplate.update("DELETE FROM users");
     }
 
-    public User findById(String id) {
-        Map<String, String> env = System.getenv();
-        Connection c;
-        try {
-
-            c = connectionMaker.makeConnection();
-
-            PreparedStatement pstmt = c.prepareStatement("SELECT * FROM users WHERE id = ?");
-            pstmt.setString(1, id);
-
-            ResultSet rs = pstmt.executeQuery();
-            rs.next();
-            User user = new User(rs.getString("id"), rs.getString("name"),
-                    rs.getString("password"));
-
-            rs.close();
-            pstmt.close();
-            c.close();
-
-            return user;
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+    public User get(String id) {
+        User user = null;
+        user = this.jdbcTemplate.queryForObject("SELECT * FROM users WHERE id = ?", userMapper(), id);
+        if (user == null) throw new EmptyResultDataAccessException(1);
+        return user;
     }
 
+    public List<User> getAll() {
+        return this.jdbcTemplate.query("SELECT * FROM users", userMapper());
+    }
+
+    public int getCount() {
+        int count = 0;
+        count = this.jdbcTemplate.queryForObject("SELECT  COUNT(*) FROM users", Integer.class);
+        return count;
+    }
 
 }
