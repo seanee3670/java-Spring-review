@@ -4,6 +4,7 @@ import com.db.domain.User;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 
@@ -35,5 +36,32 @@ public class UserDao {
         }
 
     }
+
+    public User findById(String id) {
+        Map<String, String> env = System.getenv();
+        Connection c;
+        try {
+
+            c = connectionMaker.makeConnection();
+
+            PreparedStatement pstmt = c.prepareStatement("SELECT * FROM users WHERE id = ?");
+            pstmt.setString(1, id);
+
+            ResultSet rs = pstmt.executeQuery();
+            rs.next();
+            User user = new User(rs.getString("id"), rs.getString("name"),
+                    rs.getString("password"));
+
+            rs.close();
+            pstmt.close();
+            c.close();
+
+            return user;
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
 }
