@@ -15,16 +15,13 @@ public class UserDao {
         this.connectionMaker = connectionMaker;
     }
 
-    public void add(User user) {
-        Map<String, String> env = System.getenv();
+    private void jdbcContextWithStatementStrategy(StatementStrategy st) {
+        Connection c = null;
+        PreparedStatement pstmt = null;
+
         try {
-
-            Connection c = connectionMaker.makeConnection();
-
-            PreparedStatement pstmt = c.prepareStatement("INSERT INTO users(id, name, password) VALUES(?,?,?);");
-            pstmt.setString(1, user.getId());
-            pstmt.setString(2, user.getName());
-            pstmt.setString(3, user.getPassword());
+            c = connectionMaker.makeConnection();
+            pstmt = st.makeStatement(c);
 
             pstmt.executeUpdate();
 
@@ -33,8 +30,31 @@ public class UserDao {
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
-        }
+        } finally {
+            if (pstmt != null) {
+                try {
+                    pstmt.close();
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
 
+            if (c != null) {
+                try {
+                    c.close();
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    public void add(User user) {
+        jdbcContextWithStatementStrategy(new AddStrategy(user));
+    }
+
+    public void deleteAll() {
+        jdbcContextWithStatementStrategy(new DeleteAllStrategy());
     }
 
     public User findById(String id) {
